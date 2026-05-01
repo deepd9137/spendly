@@ -1,7 +1,10 @@
-from flask import Flask, render_template
-from database.db import get_db, init_db, seed_db
+from flask import Flask, render_template, redirect, request, flash, url_for
+from database.db import get_db, init_db, seed_db, create_user
+import os
+import sqlite3
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 
 # ------------------------------------------------------------------ #
@@ -13,8 +16,26 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        name             = request.form.get("name",             "").strip()
+        email            = request.form.get("email",            "").strip()
+        password         = request.form.get("password",         "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not name or not email or not password:
+            flash("All fields are required.", "error")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "error")
+        else:
+            try:
+                create_user(name, email, password)
+                flash("Account created! Please sign in.", "success")
+                return redirect(url_for("login"))
+            except sqlite3.IntegrityError:
+                flash("An account with that email already exists.", "error")
+
     return render_template("register.html")
 
 
